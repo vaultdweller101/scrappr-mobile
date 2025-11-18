@@ -1,50 +1,75 @@
-# Welcome to your Expo app 👋
+# Scrappr Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Scrappr Mobile is a React Native application built with Expo that serves as a mobile client for capturing quick ideas and notes. It syncs in real-time with a Firebase Firestore backend.
 
-## Get started
+## Features
 
-1. Install dependencies
+* **Real-time Sync:** Notes saved on the mobile app instantly appear in the Firestore database.
+* **Offline Support:** Built-in Firestore persistence allows usage in spotty network conditions.
+* **Cross-Platform:** Runs on both Android and iOS.
+* **Dark Mode Support:** Adapts to the user's system theme preferences.
 
-   ```bash
-   npm install
-   ```
+## Tech Stack
 
-2. Start the app
+* **Framework:** [React Native](https://reactnative.dev/) with [Expo](https://expo.dev/)
+* **Language:** TypeScript
+* **Routing:** [Expo Router](https://docs.expo.dev/router/introduction/)
+* **Backend:** [Firebase Firestore](https://firebase.google.com/docs/firestore)
+* **UI Components:** Custom themed components (`ThemedText`, `ThemedView`)
 
-   ```bash
-   npx expo start
-   ```
+## Getting Started
 
-In the output, you'll find options to open the app in a
+### 1. Prerequisites
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+* Node.js (LTS version recommended)
+* Expo Go app on your mobile device OR Android Studio/Xcode for emulators.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### 2. Installation
 
-## Get a fresh project
-
-When you're ready, run:
+Clone the repository and install dependencies:
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 3. Firebase Configuration
 
-## Learn more
+This project requires a Firebase project to function.
 
-To learn more about developing your project with Expo, look at the following resources:
+1.  Create a project in the [Firebase Console](https://console.firebase.google.com/).
+2.  Navigate to **Project Settings** \> **General** \> **Your apps** and create a new **Web App**.
+3.  Copy the `firebaseConfig` object provided by Firebase.
+4.  Open `firebaseConfig.ts` in your project and replace the configuration object:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```typescript
+// firebaseConfig.ts
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+```
 
-## Join the community
+### 4. Running the App
 
-Join our community of developers creating universal apps.
+Start the development server:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npx expo start
+```
+
+  * **Press `a`** to run on Android Emulator.
+  * **Press `i`** to run on iOS Simulator (Mac only).
+  * **Scan the QR code** with the Expo Go app to run on a physical device.
+
+## Project Structure
+
+  * **app/**: Contains the Expo Router file-based navigation.
+      * `(tabs)/index.tsx`: The main Home screen displaying the list of notes.
+      * `modal.tsx`: The "New Idea" modal for creating notes.
+  * **components/**: Reusable UI components (`ThemedText`, `ThemedView`, `Collapsible`).
+  * **constants/**: App-wide constants like Colors and Themes.
+  * **hooks/**: Custom hooks for theme colors and color schemes.
