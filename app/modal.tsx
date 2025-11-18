@@ -1,16 +1,75 @@
-import { Link } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { useState } from 'react';
+import { Alert, Button, KeyboardAvoidingView, Platform, StyleSheet, TextInput } from 'react-native';
+import { db } from '../firebaseConfig';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 export default function ModalScreen() {
+  const [note, setNote] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const saveNote = async () => {
+    if (!note.trim()) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Save to the 'notes' collection in Firestore
+      await addDoc(collection(db, 'notes'), {
+        content: note,
+        timestamp: Date.now(), // Using simple timestamp to match your web extension
+        createdAt: serverTimestamp(),
+      });
+      
+      setNote('');
+      // Close the modal
+      if (router.canDismiss()) {
+        router.dismiss();
+      }
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      Alert.alert('Error', 'Failed to save note. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="title">This is a modal</ThemedText>
-      <Link href="/" dismissTo style={styles.link}>
-        <ThemedText type="link">Go to home screen</ThemedText>
-      </Link>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ThemedText type="title" style={styles.title}>New Idea</ThemedText>
+        
+        <TextInput 
+          style={styles.input} 
+          placeholder="What's on your mind?" 
+          placeholderTextColor="#888"
+          value={note}
+          onChangeText={setNote}
+          multiline
+          autoFocus
+          textAlignVertical="top"
+        />
+
+        <Button 
+          title={isSaving ? "Saving..." : "Save Note"} 
+          onPress={saveNote} 
+          disabled={!note.trim() || isSaving} 
+        />
+        
+        {/* Cancel button */}
+        <Button 
+          title="Cancel" 
+          color="gray"
+          onPress={() => router.dismiss()} 
+        />
+      </KeyboardAvoidingView>
     </ThemedView>
   );
 }
@@ -18,12 +77,23 @@ export default function ModalScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
   },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
+  keyboardView: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'flex-start',
+  },
+  title: {
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  input: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+    minHeight: 150,
+    marginBottom: 20,
+    color: '#000',
   },
 });
