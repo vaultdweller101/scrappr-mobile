@@ -74,6 +74,56 @@ npx expo start
   * **constants/**: App-wide constants like Colors and Themes.
   * **hooks/**: Custom hooks for theme colors and color schemes.
 
+## Building and Deploying
+
+### Development Build
+
+Build a development build for testing on physical devices:
+
+```bash
+# Android
+eas build --platform android --profile development
+
+# iOS
+eas build --platform ios --profile development
+```
+
+### Preview Build
+
+Create an internal preview build for testing:
+
+```bash
+# Android
+eas build --platform android --profile preview
+
+# iOS
+eas build --platform ios --profile preview
+```
+
+### Production Build
+
+Build the production version of the app:
+
+```bash
+# Android
+eas build --platform android --profile production
+
+# iOS
+eas build --platform ios --profile production
+```
+
+### Submit to Mobile Stores
+
+After building a production version, submit to the app stores:
+
+```bash
+# Android (Google Play Store)
+eas submit --platform android
+
+# iOS (App Store)
+eas submit --platform ios
+```
+
 ## Helpful links
 ```
 https://reactnative.dev/docs/environment-setup
