@@ -19,7 +19,7 @@ interface Note {
 export default function HomeScreen() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, signIn } = useAuth();
+  const { user, signIn, logout } = useAuth();
 
   useEffect(() => {
     if (!user) return;
@@ -64,6 +64,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ThemedView style={styles.header}>
         <ThemedText type="title">Scrappr</ThemedText>
+        <Button title="Logout" onPress={logout} />
       </ThemedView>
 
       {loading ? (
@@ -83,8 +84,6 @@ export default function HomeScreen() {
           }
         />
       )}
-
-      {/* Floating Action Button to Add Note */}
       <Link href="/modal" asChild>
         <TouchableOpacity style={styles.fab}>
           <Ionicons name="add" size={30} color="white" />
@@ -104,6 +103,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
   },
   listContent: {
     padding: 16,
