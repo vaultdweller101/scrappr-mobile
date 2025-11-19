@@ -1,3 +1,4 @@
+import { useAuth } from '@/hooks/useAuth';
 import { router } from 'expo-router';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useState } from 'react';
@@ -10,20 +11,19 @@ import { ThemedView } from '@/components/themed-view';
 export default function ModalScreen() {
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const { user } = useAuth();
 
   const saveNote = async () => {
-    if (!note.trim()) {
-      return;
-    }
+    if (!note.trim() || !user) return; // User must be logged in to save notes
 
     setIsSaving(true);
     try {
-      // Save to the 'notes' collection in Firestore
-      await addDoc(collection(db, 'notes'), {
-        content: note,
-        timestamp: Date.now(), // Using simple timestamp to match your web extension
-        createdAt: serverTimestamp(),
-      });
+      // Save to: users -> [USER_ID] -> notes -> [NOTE_ID]
+      await addDoc(collection(db, 'users', user.uid, 'notes'), { 
+      content: note,
+      timestamp: Date.now(),
+      createdAt: serverTimestamp(),
+    });
       
       setNote('');
       // Close the modal

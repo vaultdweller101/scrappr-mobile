@@ -73,3 +73,9 @@ npx expo start
   * **components/**: Reusable UI components (`ThemedText`, `ThemedView`, `Collapsible`).
   * **constants/**: App-wide constants like Colors and Themes.
   * **hooks/**: Custom hooks for theme colors and color schemes.
+
+## Helpful links
+```
+https://reactnative.dev/docs/environment-setup
+https://docs.expo.dev/get-started/set-up-your-environment/
+```

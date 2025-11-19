@@ -45,3 +45,9 @@ app-example
 # IDEs and editors
 .vscode/
 .idea/
+
+# Credentials
+credentials.json
+credentials/
+google-services.json
+*.pem

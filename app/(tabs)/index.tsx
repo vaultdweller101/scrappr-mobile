@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons'; // Icon for the add button
 import { Link } from 'expo-router';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Button, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAuth } from '@/hooks/useAuth';
 import { db } from '../../firebaseConfig';
 
 interface Note {
@@ -18,10 +19,16 @@ interface Note {
 export default function HomeScreen() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user, signIn } = useAuth();
 
   useEffect(() => {
-    // Query the 'notes' collection, ordered by creation time
-    const q = query(collection(db, 'notes'), orderBy('createdAt', 'desc'));
+    if (!user) return;
+
+    // Query ONLY the current user's notes
+    const q = query(
+      collection(db, 'users', user.uid, 'notes'), 
+      orderBy('createdAt', 'desc')
+    );
 
     // Listen for real-time updates
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -34,7 +41,15 @@ export default function HomeScreen() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]); // Re-run when user changes
+
+  if (!user) {
+     return (
+       <View style={styles.center}>
+         <Button title="Sign in with Google" onPress={signIn} />
+       </View>
+     );
+  }
 
   const renderNoteItem = ({ item }: { item: Note }) => (
     <ThemedView style={styles.noteCard}>
