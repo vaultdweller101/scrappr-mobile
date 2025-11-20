@@ -124,8 +124,19 @@ eas submit --platform android
 eas submit --platform ios
 ```
 
+### Quick APK generation for Android
+
+This is to create release APK
+
+```bash
+npx expo run:android --variant release
+```
+
+The APK would be in .\android\app\build\outputs\apk\release
+
 ## Helpful links
 ```
 https://reactnative.dev/docs/environment-setup
 https://docs.expo.dev/get-started/set-up-your-environment/
+https://stackoverflow.com/questions/47438857/how-to-build-expo-apk-local
 ```
