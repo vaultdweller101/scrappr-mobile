@@ -10,6 +10,8 @@ export default {
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
+      bundleIdentifier: "com.dngo123.scrapprmobile",
+      googleServicesFile: "./GoogleService-Info.plist",
     },
     android: {
       adaptiveIcon: {
