@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'; // Icon for the add button
 import { Link } from 'expo-router';
-import { collection, onSnapshot, orderBy, query, doc, deleteDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Button, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -71,7 +71,7 @@ export default function HomeScreen() {
         onPress={() => handleDeleteNote(item.id)}
         accessibilityLabel="Delete note"
       >
-        <Ionicons name="trash" size={20} color="#d11a2a" />
+        <Text style={{ color: '#d11a2a', fontWeight: 'bold', fontSize: 18 }}>×</Text>
       </TouchableOpacity>
     </ThemedView>
   );
@@ -128,49 +128,47 @@ const styles = StyleSheet.create({
     paddingBottom: 100, // Space for FAB
   },
   noteCard: {
-      deleteButton: {
-        position: 'absolute',
-        top: 10,
-        right: 10,
-        padding: 6,
-        backgroundColor: 'transparent',
-      },
     padding: 16,
     borderRadius: 12,
     backgroundColor: '#f9f9f9', // Light gray card background
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
+    position: 'relative',
   },
   noteContent: {
     fontSize: 16,
     marginBottom: 8,
-    lineHeight: 22,
   },
   noteDate: {
     fontSize: 12,
     color: '#888',
+    marginBottom: 8,
   },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 50,
+  deleteButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    padding: 6,
+    backgroundColor: 'transparent',
   },
   fab: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
+    right: 24,
+    bottom: 24,
+    backgroundColor: '#007AFF',
+    borderRadius: 28,
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: '#0a7ea4', // Scrappr blue or similar
-    justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
+    justifyContent: 'center',
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
