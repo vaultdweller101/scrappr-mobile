@@ -4,7 +4,7 @@ export default {
     slug: "scrappr-mobile",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/icon.png",
+    icon: "./assets/images/scrappr.png",
     scheme: "scrapprmobile",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,

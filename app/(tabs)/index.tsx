@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons'; // Icon for the add button
 import { Link } from 'expo-router';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, doc, deleteDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Button, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -51,12 +51,28 @@ export default function HomeScreen() {
      );
   }
 
+  const handleDeleteNote = async (noteId: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'notes', noteId));
+    } catch (error) {
+      console.error('Error deleting note:', error);
+    }
+  };
+
   const renderNoteItem = ({ item }: { item: Note }) => (
     <ThemedView style={styles.noteCard}>
       <ThemedText style={styles.noteContent}>{item.content}</ThemedText>
       <ThemedText style={styles.noteDate}>
         {new Date(item.timestamp).toLocaleDateString()}
       </ThemedText>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => handleDeleteNote(item.id)}
+        accessibilityLabel="Delete note"
+      >
+        <Ionicons name="trash" size={20} color="#d11a2a" />
+      </TouchableOpacity>
     </ThemedView>
   );
 
@@ -112,6 +128,13 @@ const styles = StyleSheet.create({
     paddingBottom: 100, // Space for FAB
   },
   noteCard: {
+      deleteButton: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        padding: 6,
+        backgroundColor: 'transparent',
+      },
     padding: 16,
     borderRadius: 12,
     backgroundColor: '#f9f9f9', // Light gray card background
