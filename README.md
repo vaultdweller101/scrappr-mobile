@@ -1,5 +1,7 @@
 # Scrappr Mobile
 
+![Scrappr Logo](assets/images/scrappr.png)
+
 Scrappr Mobile is a React Native application built with Expo that serves as a mobile client for capturing quick ideas and notes. It syncs in real-time with a Firebase Firestore backend.
 
 ## Features
