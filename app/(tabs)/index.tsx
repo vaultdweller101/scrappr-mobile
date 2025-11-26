@@ -2,10 +2,11 @@ import { Ionicons } from '@expo/vector-icons'; // Icon for the add button
 import { Link, router } from 'expo-router';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Button, FlatList, StyleSheet, Text, TouchableOpacity, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import LinkText from '@/components/link-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '../../firebaseConfig';
@@ -61,33 +62,37 @@ export default function HomeScreen() {
   };
 
   const renderNoteItem = ({ item }: { item: Note }) => (
-    <TouchableOpacity 
-      onPress={() => {
-        // Navigate to modal with params
+    // Use Pressable with onLongPress to enter edit mode so normal taps (e.g. links)
+    // inside the note content receive touches first.
+    <Pressable
+      onLongPress={() => {
         router.push({
-          pathname: "/modal",
-          params: { id: item.id, content: item.content }
+          pathname: '/modal',
+          params: { id: item.id, content: item.content },
         });
       }}
-      activeOpacity={0.7}
+      android_ripple={{ color: '#eee' }}
     >
       <ThemedView style={styles.noteCard}>
-        <ThemedText style={styles.noteContent}>{item.content}</ThemedText>
+        {/* Render content with automatic link detection so links are tappable */}
+        <LinkText style={styles.noteContent} linkStyle={styles.link}>
+          {item.content}
+        </LinkText>
+
         <ThemedText style={styles.noteDate}>
           {new Date(item.timestamp).toLocaleDateString()}
         </ThemedText>
-        
+
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => handleDeleteNote(item.id)}
           accessibilityLabel="Delete note"
-          // Use hitSlop to make the X easier to press without triggering the edit
-          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}} 
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text style={{ color: '#d11a2a', fontWeight: 'bold', fontSize: 18 }}>×</Text>
         </TouchableOpacity>
       </ThemedView>
-    </TouchableOpacity>
+    </Pressable>
   );
 
   return (
@@ -151,6 +156,10 @@ const styles = StyleSheet.create({
   noteContent: {
     fontSize: 16,
     marginBottom: 8,
+  },
+  link: {
+    color: '#0a7ea4',
+    textDecorationLine: 'underline',
   },
   noteDate: {
     fontSize: 12,
