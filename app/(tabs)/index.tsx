@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'; // Icon for the add button
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Button, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -61,19 +61,33 @@ export default function HomeScreen() {
   };
 
   const renderNoteItem = ({ item }: { item: Note }) => (
-    <ThemedView style={styles.noteCard}>
-      <ThemedText style={styles.noteContent}>{item.content}</ThemedText>
-      <ThemedText style={styles.noteDate}>
-        {new Date(item.timestamp).toLocaleDateString()}
-      </ThemedText>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDeleteNote(item.id)}
-        accessibilityLabel="Delete note"
-      >
-        <Text style={{ color: '#d11a2a', fontWeight: 'bold', fontSize: 18 }}>×</Text>
-      </TouchableOpacity>
-    </ThemedView>
+    <TouchableOpacity 
+      onPress={() => {
+        // Navigate to modal with params
+        router.push({
+          pathname: "/modal",
+          params: { id: item.id, content: item.content }
+        });
+      }}
+      activeOpacity={0.7}
+    >
+      <ThemedView style={styles.noteCard}>
+        <ThemedText style={styles.noteContent}>{item.content}</ThemedText>
+        <ThemedText style={styles.noteDate}>
+          {new Date(item.timestamp).toLocaleDateString()}
+        </ThemedText>
+        
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteNote(item.id)}
+          accessibilityLabel="Delete note"
+          // Use hitSlop to make the X easier to press without triggering the edit
+          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}} 
+        >
+          <Text style={{ color: '#d11a2a', fontWeight: 'bold', fontSize: 18 }}>×</Text>
+        </TouchableOpacity>
+      </ThemedView>
+    </TouchableOpacity>
   );
 
   return (
