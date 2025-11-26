@@ -136,6 +136,18 @@ npx expo run:android --variant release
 
 The APK would be in .\android\app\build\outputs\apk\release
 
+To uninstall the APK from the emulator
+
+```bash
+adb uninstall com.dngo123.scrapprmobile
+```
+
+Or run this
+
+```bash
+npx expo prebuild --clean; npx expo run:android --variant release
+```
+
 ## Helpful links
 ```
 https://reactnative.dev/docs/environment-setup
