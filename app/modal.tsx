@@ -1,27 +1,119 @@
+// app/modal.tsx
+
 import { useAuth } from '@/hooks/useAuth';
-import { router, useLocalSearchParams } from 'expo-router'; // Import search params
-import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore'; // Import updateDoc and doc
+import { Ionicons } from '@expo/vector-icons'; // Import Icons
+import { Audio } from 'expo-av'; // Import Audio
+import * as FileSystem from 'expo-file-system/legacy';
+import { router, useLocalSearchParams } from 'expo-router';
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useEffect, useState } from 'react';
-import { Alert, Button, KeyboardAvoidingView, Platform, StyleSheet, TextInput } from 'react-native';
-import { db } from '../firebaseConfig';
+import { ActivityIndicator, Alert, Button, KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { db, functions } from '../firebaseConfig';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 export default function ModalScreen() {
-  // Retrieve params passed from the list
   const params = useLocalSearchParams<{ id: string; content: string }>();
   
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Audio Recording States
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+
   const { user } = useAuth();
 
-  // If params exist (Edit Mode), pre-fill the state
   useEffect(() => {
     if (params.content) {
       setNote(params.content);
     }
   }, [params.content]);
+
+  // Audio Recording Functions
+
+  async function startRecording() {
+    try {
+      // Request permissions
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant microphone permission to record notes.');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(recording);
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Failed to start recording', err);
+      Alert.alert('Error', 'Failed to start recording.');
+    }
+  }
+
+  async function stopRecording() {
+    if (!recording) return;
+
+    setIsRecording(false);
+    setIsTranscribing(true);
+
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI(); 
+      
+      // Reset recording object
+      setRecording(null);
+
+      if (uri) {
+        await transcribeAudio(uri);
+      }
+    } catch (error) {
+      console.error('Error stopping recording', error);
+    } finally {
+      setIsTranscribing(false);
+    }
+  }
+
+  async function transcribeAudio(uri: string) {
+    try {
+      setIsTranscribing(true);
+
+      // 1. Read the audio file as Base64
+      const base64Audio = await FileSystem.readAsStringAsync(uri, {
+        encoding: 'base64',
+      });
+
+      // 2. Call the Cloud Function
+      const transcribeFunction = httpsCallable<{ audioBase64: string }, { text: string }>(
+        functions, 
+        'transcribeAudio'
+      );
+
+      const response = await transcribeFunction({ audioBase64: base64Audio });
+      
+      // 3. Use the result
+      const text = response.data.text;
+      
+      setNote((prev) => (prev ? `${prev} ${text}` : text));
+
+    } catch (error: any) {
+      console.error('Transcription failed:', error);
+      Alert.alert('Debug Error', error.message || JSON.stringify(error)); 
+      setIsTranscribing(false);
+    }
+  }
+
+  // Saving logic
 
   const saveNote = async () => {
     if (!note.trim() || !user) return;
@@ -29,15 +121,12 @@ export default function ModalScreen() {
     setIsSaving(true);
     try {
       if (params.id) {
-        // --- EDIT MODE: Update existing doc ---
         const noteRef = doc(db, 'users', user.uid, 'notes', params.id);
         await updateDoc(noteRef, {
           content: note,
-          // We usually update a 'updatedAt' field, but keeping it simple:
           timestamp: Date.now(), 
         });
       } else {
-        // --- CREATE MODE: Add new doc ---
         await addDoc(collection(db, 'users', user.uid, 'notes'), { 
           content: note,
           timestamp: Date.now(),
@@ -65,7 +154,6 @@ export default function ModalScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        {/* Change title based on mode */}
         <ThemedText type="title" style={styles.title}>
           {isEditing ? "Edit Note" : "New Idea"}
         </ThemedText>
@@ -81,17 +169,43 @@ export default function ModalScreen() {
           textAlignVertical="top"
         />
 
-        <Button 
-          title={isSaving ? "Saving..." : (isEditing ? "Update Note" : "Save Note")} 
-          onPress={saveNote} 
-          disabled={!note.trim() || isSaving} 
-        />
-        
-        <Button 
-          title="Cancel" 
-          color="gray"
-          onPress={() => router.dismiss()} 
-        />
+        {/* Recording UI */}
+        <View style={styles.recordingContainer}>
+          {isTranscribing ? (
+            <View style={styles.transcribingRow}>
+              <ActivityIndicator size="small" color="#007AFF" />
+              <ThemedText style={{ marginLeft: 8 }}>Transcribing...</ThemedText>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              style={[styles.recordButton, isRecording && styles.recordingActive]}
+              onPress={isRecording ? stopRecording : startRecording}
+            >
+              <Ionicons 
+                name={isRecording ? "stop" : "mic"} 
+                size={24} 
+                color="white" 
+              />
+              <ThemedText style={styles.recordButtonText}>
+                {isRecording ? "Stop Recording" : "Record Audio"}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.buttonGroup}>
+          <Button 
+            title={isSaving ? "Saving..." : (isEditing ? "Update Note" : "Save Note")} 
+            onPress={saveNote} 
+            disabled={!note.trim() || isSaving || isRecording || isTranscribing} 
+          />
+          
+          <Button 
+            title="Cancel" 
+            color="gray"
+            onPress={() => router.dismiss()} 
+          />
+        </View>
       </KeyboardAvoidingView>
     </ThemedView>
   );
@@ -118,5 +232,33 @@ const styles = StyleSheet.create({
     minHeight: 150,
     marginBottom: 20,
     color: '#000',
+  },
+  recordingContainer: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  recordButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+  },
+  recordingActive: {
+    backgroundColor: '#FF3B30', // Red when recording
+  },
+  recordButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  transcribingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 44, // Match button height roughly to prevent layout jump
+  },
+  buttonGroup: {
+    gap: 10,
   },
 });

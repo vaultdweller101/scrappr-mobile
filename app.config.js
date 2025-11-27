@@ -12,6 +12,9 @@ export default {
       supportsTablet: true,
       bundleIdentifier: "com.dngo123.scrapprmobile",
       googleServicesFile: "./GoogleService-Info.plist",
+      infoPlist: {
+        NSMicrophoneUsageDescription: "Allow Scrappr to access your microphone to create voice notes.",
+      },
     },
     android: {
       adaptiveIcon: {
@@ -24,6 +27,10 @@ export default {
       predictiveBackGestureEnabled: false,
       package: "com.dngo123.scrapprmobile",
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
+      permissions: [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET"
+      ],
     },
     web: {
       output: "static",
@@ -51,6 +58,7 @@ export default {
           },
         },
       ],
+      "expo-av",
     ],
     experiments: {
       typedRoutes: true,

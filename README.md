@@ -142,12 +142,6 @@ To uninstall the APK from the emulator
 adb uninstall com.dngo123.scrapprmobile
 ```
 
-Or run this
-
-```bash
-npx expo prebuild --clean; npx expo run:android --variant release
-```
-
 ## Helpful links
 ```
 https://reactnative.dev/docs/environment-setup
