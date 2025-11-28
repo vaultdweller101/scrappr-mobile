@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons'; // Import Icons
 import { Audio } from 'expo-av'; // Import Audio
 import * as FileSystem from 'expo-file-system/legacy';
 import { router, useLocalSearchParams } from 'expo-router';
-import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp, updateDoc, setDoc, arrayUnion } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Button, KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
@@ -15,10 +15,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 export default function ModalScreen() {
-  const params = useLocalSearchParams<{ id: string; content: string }>();
+  const params = useLocalSearchParams<{ id: string; content: string; tags: string[] }>();
   
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // tags
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   
   // Audio Recording States
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
@@ -31,7 +35,17 @@ export default function ModalScreen() {
     if (params.content) {
       setNote(params.content);
     }
-  }, [params.content]);
+    let loadedTags: any = params.tags;
+    if (typeof loadedTags === 'string') {
+      loadedTags = loadedTags.includes(',') 
+        ? loadedTags.split(',').map(t => t.trim()) 
+        : [loadedTags];
+    }
+    else if (!Array.isArray(loadedTags)) {
+      loadedTags = [];
+    }
+    setTags(loadedTags);
+  }, [params.content, params.tags]);
 
   // Audio Recording Functions
 
@@ -124,17 +138,28 @@ export default function ModalScreen() {
         const noteRef = doc(db, 'users', user.uid, 'notes', params.id);
         await updateDoc(noteRef, {
           content: note,
-          timestamp: Date.now(), 
+          timestamp: Date.now(),
+          tagList: tags, 
         });
       } else {
         await addDoc(collection(db, 'users', user.uid, 'notes'), { 
           content: note,
           timestamp: Date.now(),
           createdAt: serverTimestamp(),
+          tagList: tags,
         });
+      }
+
+      if (tags.length > 0) {
+          const masterTagsRef = doc(db, "users", user.uid, "metadata", "tags");
+      
+          await setDoc(masterTagsRef, {
+            list: arrayUnion(...tags)
+          }, { merge: true });
       }
       
       setNote('');
+      setTags([]);
       if (router.canDismiss()) {
         router.dismiss();
       }
@@ -147,6 +172,19 @@ export default function ModalScreen() {
   };
 
   const isEditing = !!params.id;
+
+  const handleAddTag = () => {
+    const cleanTag = tagInput.trim().toLowerCase(); // Normalize to lowercase
+
+    if (cleanTag.length > 0 && !tags.includes(cleanTag)) {
+      setTags([...tags, cleanTag]);
+      setTagInput("");
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -168,6 +206,35 @@ export default function ModalScreen() {
           autoFocus
           textAlignVertical="top"
         />
+
+        <View style={styles.tagSection}>
+  
+        <View style={styles.tagContainer}>
+          {tags.map((tag, index) => (
+            <View key={`${tag}-${index}`} style={styles.tagChip}>
+              <ThemedText style={styles.tagText}>#{tag}</ThemedText>
+              <TouchableOpacity onPress={() => removeTag(tag)}>
+                <Ionicons name="close-circle" size={16} color="#666" style={{marginLeft: 4}} />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.tagInputWrapper}>
+          <Ionicons name="pricetag-outline" size={20} color="#888" style={{marginRight: 8}} />
+          <TextInput
+            style={styles.tagInput}
+            placeholder="Add tag..."
+            placeholderTextColor="#aaa"
+            value={tagInput}
+            onChangeText={setTagInput}
+            onSubmitEditing={handleAddTag} 
+            returnKeyType="done"
+            autoCapitalize="none"
+            autoCorrect={false} 
+          />
+        </View>
+      </View>
 
         {/* Recording UI */}
         <View style={styles.recordingContainer}>
@@ -260,5 +327,50 @@ const styles = StyleSheet.create({
   },
   buttonGroup: {
     gap: 10,
+  },
+  tagSection: {
+    width: '100%',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    marginBottom: 10,
+  },
+
+  tagContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  tagText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+
+  tagInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#eee', 
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 40,
+  },
+  tagInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14,
+    color: '#000',
   },
 });

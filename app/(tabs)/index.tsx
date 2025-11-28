@@ -15,12 +15,16 @@ interface Note {
   id: string;
   content: string;
   timestamp: number;
+  tags: string[];
 }
 
 export default function HomeScreen() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, signIn, logout } = useAuth();
+
+  const [allUserTags, setAllUserTags] = useState<string[]>([]);
+  const [filterTags, setFilterTags] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -35,7 +39,9 @@ export default function HomeScreen() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const notesList = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        content: doc.data().content,
+        timestamp: doc.data().timestamp || Date.now(),
+        tags: doc.data().tagList
       })) as Note[];
       setNotes(notesList);
       setLoading(false);
@@ -68,7 +74,7 @@ export default function HomeScreen() {
       onLongPress={() => {
         router.push({
           pathname: '/modal',
-          params: { id: item.id, content: item.content },
+          params: { id: item.id, content: item.content, tags: item.tags},
         });
       }}
       android_ripple={{ color: '#eee' }}
