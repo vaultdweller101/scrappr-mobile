@@ -38,7 +38,9 @@ export default function HomeScreen() {
     const tagsRef = doc(db, "users", user.uid, "metadata", "tags");
     const unsubscribeTags = onSnapshot(tagsRef, (docSnap) => {
       if (docSnap.exists()) {
-        setAllUserTags(docSnap.data().list || []);
+        const rawList = docSnap.data().list || [];
+        const sortedList = rawList.sort((a: string, b: string) => a.localeCompare(b));
+        setAllUserTags(sortedList);
       } else {
         setAllUserTags([]);
       }
