@@ -36,15 +36,22 @@ export default function ModalScreen() {
       setNote(params.content);
     }
     let loadedTags: any = params.tags;
+    let cleanTags: string[] = [];
     if (typeof loadedTags === 'string') {
-      loadedTags = loadedTags.includes(',') 
-        ? loadedTags.split(',').map(t => t.trim()) 
-        : [loadedTags];
+      if (loadedTags.trim() === "") {
+        cleanTags = [];
+      } else {
+        cleanTags = loadedTags.includes(',') 
+          ? loadedTags.split(',').map(t => t.trim()) 
+          : [loadedTags];
+      }
     }
     else if (!Array.isArray(loadedTags)) {
-      loadedTags = [];
+      cleanTags = [];
+    } else {
+      cleanTags = loadedTags;
     }
-    setTags(loadedTags);
+    setTags(cleanTags);
   }, [params.content, params.tags]);
 
   // Audio Recording Functions
@@ -134,27 +141,28 @@ export default function ModalScreen() {
 
     setIsSaving(true);
     try {
+      const cleanTags = tags.filter(tag => tag && tag.trim().length > 0);
       if (params.id) {
         const noteRef = doc(db, 'users', user.uid, 'notes', params.id);
         await updateDoc(noteRef, {
           content: note,
           timestamp: Date.now(),
-          tagList: tags, 
+          tagList: cleanTags, 
         });
       } else {
         await addDoc(collection(db, 'users', user.uid, 'notes'), { 
           content: note,
           timestamp: Date.now(),
           createdAt: serverTimestamp(),
-          tagList: tags,
+          tagList: cleanTags,
         });
       }
 
-      if (tags.length > 0) {
+      if (cleanTags.length > 0) {
           const masterTagsRef = doc(db, "users", user.uid, "metadata", "tags");
       
           await setDoc(masterTagsRef, {
-            list: arrayUnion(...tags)
+            list: arrayUnion(...cleanTags)
           }, { merge: true });
       }
       

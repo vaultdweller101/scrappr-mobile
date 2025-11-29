@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'; // Icon for the add button
 import { Link, router } from 'expo-router';
-import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query, where, getDocs, arrayRemove, writeBatch } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, FlatList, StyleSheet, Text, TouchableOpacity, View, Pressable } from 'react-native';
+import { ActivityIndicator, Button, FlatList, StyleSheet, Text, TouchableOpacity, View, Pressable, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -35,6 +35,15 @@ export default function HomeScreen() {
       orderBy('createdAt', 'desc')
     );
 
+    const tagsRef = doc(db, "users", user.uid, "metadata", "tags");
+    const unsubscribeTags = onSnapshot(tagsRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setAllUserTags(docSnap.data().list || []);
+      } else {
+        setAllUserTags([]);
+      }
+    });
+
     // Listen for real-time updates
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const notesList = snapshot.docs.map(doc => ({
@@ -47,7 +56,10 @@ export default function HomeScreen() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubscribeTags();
+    }
   }, [user]); // Re-run when user changes
 
   if (!user) {
@@ -101,6 +113,62 @@ export default function HomeScreen() {
     </Pressable>
   );
 
+  const filteredNotes = notes.filter(note => {
+    if (filterTags.length === 0) return true;
+    if (!note.tags || !Array.isArray(note.tags)) return false;
+    return note.tags.some(t => filterTags.includes(t));
+  });
+
+  const promptDeleteTag = (tagToDelete: string) => {
+    Alert.alert(
+      "Delete Tag?",
+      `Are you sure you want to delete #${tagToDelete} from ALL notes globally?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              const batch = writeBatch(db);
+
+              const masterRef = doc(db, "users", user.uid, "metadata", "tags");
+              batch.update(masterRef, { list: arrayRemove(tagToDelete) });
+
+              const notesRef = collection(db, "users", user.uid, "notes");
+              const q = query(
+                notesRef,
+                where("tagList", "array-contains", tagToDelete)
+              );
+              
+              const snapshot = await getDocs(q);
+
+              snapshot.docs.forEach((doc) => {
+                batch.update(doc.ref, { tagList: arrayRemove(tagToDelete) });
+              });
+
+              await batch.commit();
+
+            } catch (error) {
+              console.error(error);
+              Alert.alert("Error", "Could not delete tag.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const toggleFilterTag = (tag: string) => {
+    setFilterTags(prevTags => {
+      if (prevTags.includes(tag)) {
+        return prevTags.filter(t => t !== tag);
+      } else {
+        return [...prevTags, tag];
+      }
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ThemedView style={styles.header}>
@@ -108,13 +176,60 @@ export default function HomeScreen() {
         <Button title="Logout" onPress={logout} />
       </ThemedView>
 
+      <View style={styles.filterContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContentContainer}
+        >
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip, 
+              filterTags.length === 0 && styles.activeFilterChip
+            ]}
+            onPress={() => setFilterTags([])}
+          >
+            <ThemedText style={[
+              styles.filterText, 
+              filterTags.length === 0 && styles.activeFilterText
+            ]}>
+              All Notes
+            </ThemedText>
+          </TouchableOpacity>
+
+          {allUserTags.map(tag => {
+            const isActive = filterTags.includes(tag);
+            return (
+              <TouchableOpacity
+                key={tag}
+                style={[
+                  styles.filterChip, 
+                  isActive && styles.activeFilterChip
+                ]}
+                onPress={() => toggleFilterTag(tag)}
+                onLongPress={() => promptDeleteTag(tag)}
+                delayLongPress={500}
+              >
+                <ThemedText style={[
+                  styles.filterText, 
+                  isActive && styles.activeFilterText
+                ]}>
+                  #{tag}
+                </ThemedText>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" />
         </View>
       ) : (
         <FlatList
-          data={notes}
+          data={filteredNotes}
           keyExtractor={(item) => item.id}
           renderItem={renderNoteItem}
           contentContainerStyle={styles.listContent}
@@ -199,5 +314,37 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  filterContainer: {
+    height: 50,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  filterContentContainer: {
+    paddingHorizontal: 15,
+    alignItems: 'center',
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  activeFilterChip: {
+    backgroundColor: '#007AFF',
+    borderColor: '#0063cc',
+  },
+  filterText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  activeFilterText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
