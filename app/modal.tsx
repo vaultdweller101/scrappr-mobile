@@ -19,14 +19,19 @@ export default function ModalScreen() {
   
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // tags
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  
+  // Audio Recording States
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+
   const { user } = useAuth();
 
-  // Get themes
+  // Theme
   const colorScheme = useColorScheme() ?? 'light';
   const themeColors = Colors[colorScheme];
 
@@ -53,6 +58,7 @@ export default function ModalScreen() {
     setTags(cleanTags);
   }, [params.content, params.tags]);
 
+  // Audio Recording Functions
   async function startRecording() {
     try {
       const permission = await Audio.requestPermissionsAsync();
@@ -60,8 +66,16 @@ export default function ModalScreen() {
         Alert.alert('Permission needed', 'Please grant microphone permission to record notes.');
         return;
       }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
       setRecording(recording);
       setIsRecording(true);
     } catch (err) {
@@ -72,25 +86,42 @@ export default function ModalScreen() {
 
   async function stopRecording() {
     if (!recording) return;
+
     setIsRecording(false);
     setIsTranscribing(true);
+
     try {
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI(); 
       setRecording(null);
-      if (uri) { await transcribeAudio(uri); }
-    } catch (error) { console.error('Error stopping recording', error); } 
-    finally { setIsTranscribing(false); }
+
+      if (uri) {
+        await transcribeAudio(uri);
+      }
+    } catch (error) {
+      console.error('Error stopping recording', error);
+    } finally {
+      setIsTranscribing(false);
+    }
   }
 
   async function transcribeAudio(uri: string) {
     try {
       setIsTranscribing(true);
-      const base64Audio = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
-      const transcribeFunction = httpsCallable<{ audioBase64: string }, { text: string }>(functions, 'transcribeAudio');
+      const base64Audio = await FileSystem.readAsStringAsync(uri, {
+        encoding: 'base64',
+      });
+
+      const transcribeFunction = httpsCallable<{ audioBase64: string }, { text: string }>(
+        functions, 
+        'transcribeAudio'
+      );
+
       const response = await transcribeFunction({ audioBase64: base64Audio });
       const text = response.data.text;
+      
       setNote((prev) => (prev ? `${prev} ${text}` : text));
+
     } catch (error: any) {
       console.error('Transcription failed:', error);
       Alert.alert('Debug Error', error.message || JSON.stringify(error)); 
@@ -98,33 +129,51 @@ export default function ModalScreen() {
     }
   }
 
+  // Saving logic
   const saveNote = async () => {
-     if (!note.trim() || !user) return;
-     setIsSaving(true);
-     try {
-       const cleanTags = tags.filter(tag => tag && tag.trim().length > 0);
-       if (params.id) {
-         const noteRef = doc(db, 'users', user.uid, 'notes', params.id);
-         await updateDoc(noteRef, { content: note, timestamp: Date.now(), tagList: cleanTags });
-       } else {
-         await addDoc(collection(db, 'users', user.uid, 'notes'), { 
-           content: note, timestamp: Date.now(), createdAt: serverTimestamp(), tagList: cleanTags,
-         });
-       }
-       if (cleanTags.length > 0) {
-           const masterTagsRef = doc(db, "users", user.uid, "metadata", "tags");
-           await setDoc(masterTagsRef, { list: arrayUnion(...cleanTags) }, { merge: true });
-       }
-       setNote('');
-       setTags([]);
-       if (router.canDismiss()) { router.dismiss(); }
-     } catch (error) {
-       console.error("Error saving document: ", error);
-       Alert.alert('Error', 'Failed to save note. Please try again.');
-     } finally { setIsSaving(false); }
+    if (!note.trim() || !user) return;
+
+    setIsSaving(true);
+    try {
+      const cleanTags = tags.filter(tag => tag && tag.trim().length > 0);
+      if (params.id) {
+        const noteRef = doc(db, 'users', user.uid, 'notes', params.id);
+        await updateDoc(noteRef, {
+          content: note,
+          timestamp: Date.now(),
+          tagList: cleanTags, 
+        });
+      } else {
+        await addDoc(collection(db, 'users', user.uid, 'notes'), { 
+          content: note,
+          timestamp: Date.now(),
+          createdAt: serverTimestamp(),
+          tagList: cleanTags,
+        });
+      }
+
+      if (cleanTags.length > 0) {
+          const masterTagsRef = doc(db, "users", user.uid, "metadata", "tags");
+          await setDoc(masterTagsRef, {
+            list: arrayUnion(...cleanTags)
+          }, { merge: true });
+      }
+      
+      setNote('');
+      setTags([]);
+      if (router.canDismiss()) {
+        router.dismiss();
+      }
+    } catch (error) {
+      console.error("Error saving document: ", error);
+      Alert.alert('Error', 'Failed to save note. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const isEditing = !!params.id;
+
   const handleAddTag = () => {
     const cleanTag = tagInput.trim().toLowerCase();
     if (cleanTag.length > 0 && !tags.includes(cleanTag)) {
@@ -132,6 +181,7 @@ export default function ModalScreen() {
       setTagInput("");
     }
   };
+
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(t => t !== tagToRemove));
   };
@@ -142,12 +192,42 @@ export default function ModalScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ThemedText type="title" style={styles.title}>
-          {isEditing ? "Edit Note" : "New Idea"}
-        </ThemedText>
+        {/* Top Controls (Replaces Title) */}
+        <View style={styles.topControls}>
+          <Button 
+            title="Cancel" 
+            color={colorScheme === 'dark' ? '#ff4d4d' : 'gray'}
+            onPress={() => router.dismiss()} 
+          />
+          
+          <TouchableOpacity 
+            style={[styles.recordButtonCompact, isRecording && styles.recordingActive]}
+            onPress={isRecording ? stopRecording : startRecording}
+            disabled={isTranscribing}
+          >
+             {isTranscribing ? (
+                <ActivityIndicator size="small" color="white" />
+             ) : (
+                <Ionicons 
+                  name={isRecording ? "stop" : "mic"} 
+                  size={20} 
+                  color="white" 
+                />
+             )}
+          </TouchableOpacity>
+
+          <Button 
+            title={isSaving ? "Saving..." : (isEditing ? "Update" : "Save")} 
+            onPress={saveNote} 
+            disabled={!note.trim() || isSaving || isRecording || isTranscribing} 
+          />
+        </View>
         
         <TextInput 
-          style={[styles.input, { backgroundColor: themeColors.input, color: themeColors.text }]} 
+          style={[
+            styles.input, 
+            { backgroundColor: themeColors.input, color: themeColors.text }
+          ]} 
           placeholder="What's on your mind?" 
           placeholderTextColor={themeColors.icon}
           value={note}
@@ -169,7 +249,13 @@ export default function ModalScreen() {
             ))}
           </View>
 
-          <View style={[styles.tagInputWrapper, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
+          <View style={[
+            styles.tagInputWrapper, 
+            { 
+              backgroundColor: themeColors.background, 
+              borderColor: themeColors.border 
+            }
+          ]}>
             <Ionicons name="pricetag-outline" size={20} color={themeColors.icon} style={{marginRight: 8}} />
             <TextInput
               style={[styles.tagInput, { color: themeColors.text }]}
@@ -185,42 +271,6 @@ export default function ModalScreen() {
           </View>
         </View>
 
-        <View style={styles.recordingContainer}>
-          {isTranscribing ? (
-            <View style={styles.transcribingRow}>
-              <ActivityIndicator size="small" color={Colors.light.tint} />
-              <ThemedText style={{ marginLeft: 8 }}>Transcribing...</ThemedText>
-            </View>
-          ) : (
-            <TouchableOpacity 
-              style={[styles.recordButton, isRecording && styles.recordingActive]}
-              onPress={isRecording ? stopRecording : startRecording}
-            >
-              <Ionicons 
-                name={isRecording ? "stop" : "mic"} 
-                size={24} 
-                color="white" 
-              />
-              <ThemedText style={styles.recordButtonText}>
-                {isRecording ? "Stop Recording" : "Record Audio"}
-              </ThemedText>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.buttonGroup}>
-          <Button 
-            title={isSaving ? "Saving..." : (isEditing ? "Update Note" : "Save Note")} 
-            onPress={saveNote} 
-            disabled={!note.trim() || isSaving || isRecording || isTranscribing} 
-          />
-          
-          <Button 
-            title="Cancel" 
-            color="gray"
-            onPress={() => router.dismiss()} 
-          />
-        </View>
       </KeyboardAvoidingView>
     </ThemedView>
   );
@@ -235,9 +285,12 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: 'flex-start',
   },
-  title: {
+  topControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
-    textAlign: 'center',
+    paddingBottom: 10,
   },
   input: {
     borderRadius: 8,
@@ -246,33 +299,16 @@ const styles = StyleSheet.create({
     minHeight: 150,
     marginBottom: 20,
   },
-  recordingContainer: {
-    marginBottom: 20,
+  recordButtonCompact: {
+    backgroundColor: '#007AFF',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
     alignItems: 'center',
-  },
-  recordButton: {
-    backgroundColor: '#007AFF', // You can theme this too if you want, but brand colors usually stay
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 25,
   },
   recordingActive: {
     backgroundColor: '#FF3B30',
-  },
-  recordButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  transcribingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 44, 
-  },
-  buttonGroup: {
-    gap: 10,
   },
   tagSection: {
     width: '100%',
