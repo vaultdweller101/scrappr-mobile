@@ -1,13 +1,14 @@
-import { Ionicons } from '@expo/vector-icons'; // Icon for the add button
+import { Ionicons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
-import { collection, deleteDoc, doc, onSnapshot, orderBy, query, where, getDocs, arrayRemove, writeBatch } from 'firebase/firestore';
+import { arrayRemove, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, where, writeBatch } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, FlatList, StyleSheet, Text, TouchableOpacity, View, Pressable, ScrollView, Alert } from 'react-native';
+import { ActivityIndicator, Alert, Button, FlatList, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
 import LinkText from '@/components/link-text';
-import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/themed-text';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '../../firebaseConfig';
 
@@ -22,6 +23,10 @@ export default function HomeScreen() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, signIn, logout } = useAuth();
+  
+  // Get current theme
+  const colorScheme = useColorScheme() ?? 'light';
+  const themeColors = Colors[colorScheme];
 
   const [allUserTags, setAllUserTags] = useState<string[]>([]);
   const [filterTags, setFilterTags] = useState<string[]>([]);
@@ -29,7 +34,6 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!user) return;
 
-    // Query ONLY the current user's notes
     const q = query(
       collection(db, 'users', user.uid, 'notes'), 
       orderBy('createdAt', 'desc')
@@ -38,7 +42,7 @@ export default function HomeScreen() {
     const tagsRef = doc(db, "users", user.uid, "metadata", "tags");
     const unsubscribeTags = onSnapshot(tagsRef, (docSnap) => {
       if (docSnap.exists()) {
-        const rawList = docSnap.data().list || [];
+        const rawList = docSnap.data().list || []; // Fixed typo here
         const sortedList = rawList.sort((a: string, b: string) => a.localeCompare(b));
         setAllUserTags(sortedList);
       } else {
@@ -46,7 +50,6 @@ export default function HomeScreen() {
       }
     });
 
-    // Listen for real-time updates
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const notesList = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -62,11 +65,11 @@ export default function HomeScreen() {
       unsubscribe();
       unsubscribeTags();
     }
-  }, [user]); // Re-run when user changes
+  }, [user]);
 
   if (!user) {
      return (
-       <View style={styles.center}>
+       <View style={[styles.center, { backgroundColor: themeColors.background }]}>
          <Button title="Sign in with Google" onPress={signIn} />
        </View>
      );
@@ -82,8 +85,6 @@ export default function HomeScreen() {
   };
 
   const renderNoteItem = ({ item }: { item: Note }) => (
-    // Use Pressable with onLongPress to enter edit mode so normal taps (e.g. links)
-    // inside the note content receive touches first.
     <Pressable
       onLongPress={() => {
         router.push({
@@ -91,17 +92,16 @@ export default function HomeScreen() {
           params: { id: item.id, content: item.content, tags: item.tags},
         });
       }}
-      android_ripple={{ color: '#eee' }}
+      android_ripple={{ color: themeColors.border }}
     >
-      <ThemedView style={styles.noteCard}>
-        {/* Render content with automatic link detection so links are tappable */}
-        <LinkText style={styles.noteContent} linkStyle={styles.link}>
+      <View style={[styles.noteCard, { backgroundColor: themeColors.card }]}>
+        <LinkText style={[styles.noteContent, { color: themeColors.text }]} linkStyle={styles.link}>
           {item.content}
         </LinkText>
 
-        <ThemedText style={styles.noteDate}>
+        <Text style={[styles.noteDate, { color: themeColors.icon }]}>
           {new Date(item.timestamp).toLocaleDateString()}
-        </ThemedText>
+        </Text>
 
         <TouchableOpacity
           style={styles.deleteButton}
@@ -109,9 +109,9 @@ export default function HomeScreen() {
           accessibilityLabel="Delete note"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={{ color: '#d11a2a', fontWeight: 'bold', fontSize: 18 }}>×</Text>
+          <Text style={{ color: themeColors.danger, fontWeight: 'bold', fontSize: 18 }}>×</Text>
         </TouchableOpacity>
-      </ThemedView>
+      </View>
     </Pressable>
   );
 
@@ -133,24 +133,15 @@ export default function HomeScreen() {
           onPress: async () => {
             try {
               const batch = writeBatch(db);
-
               const masterRef = doc(db, "users", user.uid, "metadata", "tags");
               batch.update(masterRef, { list: arrayRemove(tagToDelete) });
-
               const notesRef = collection(db, "users", user.uid, "notes");
-              const q = query(
-                notesRef,
-                where("tagList", "array-contains", tagToDelete)
-              );
-              
+              const q = query(notesRef, where("tagList", "array-contains", tagToDelete));
               const snapshot = await getDocs(q);
-
               snapshot.docs.forEach((doc) => {
                 batch.update(doc.ref, { tagList: arrayRemove(tagToDelete) });
               });
-
               await batch.commit();
-
             } catch (error) {
               console.error(error);
               Alert.alert("Error", "Could not delete tag.");
@@ -172,32 +163,33 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ThemedView style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
+      <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
         <ThemedText type="title">Scrappr</ThemedText>
         <Button title="Logout" onPress={logout} />
-      </ThemedView>
+      </View>
 
-      <View style={styles.filterContainer}>
+      <View style={[styles.filterContainer, { backgroundColor: themeColors.background, borderBottomColor: themeColors.border }]}>
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterContentContainer}
         >
-
           <TouchableOpacity
             style={[
               styles.filterChip, 
-              filterTags.length === 0 && styles.activeFilterChip
+              { backgroundColor: themeColors.filterChip, borderColor: themeColors.border },
+              filterTags.length === 0 && { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint }
             ]}
             onPress={() => setFilterTags([])}
           >
-            <ThemedText style={[
+            <Text style={[
               styles.filterText, 
+              { color: themeColors.text },
               filterTags.length === 0 && styles.activeFilterText
             ]}>
               All Notes
-            </ThemedText>
+            </Text>
           </TouchableOpacity>
 
           {allUserTags.map(tag => {
@@ -207,18 +199,20 @@ export default function HomeScreen() {
                 key={tag}
                 style={[
                   styles.filterChip, 
-                  isActive && styles.activeFilterChip
+                  { backgroundColor: themeColors.filterChip, borderColor: themeColors.border },
+                  isActive && { backgroundColor: Colors.light.tint, borderColor: Colors.light.tint }
                 ]}
                 onPress={() => toggleFilterTag(tag)}
                 onLongPress={() => promptDeleteTag(tag)}
                 delayLongPress={500}
               >
-                <ThemedText style={[
+                <Text style={[
                   styles.filterText, 
+                  { color: themeColors.text },
                   isActive && styles.activeFilterText
                 ]}>
                   #{tag}
-                </ThemedText>
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -227,7 +221,7 @@ export default function HomeScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={themeColors.tint} />
         </View>
       ) : (
         <FlatList
@@ -243,7 +237,7 @@ export default function HomeScreen() {
         />
       )}
       <Link href="/modal" asChild>
-        <TouchableOpacity style={styles.fab}>
+        <TouchableOpacity style={[styles.fab, { backgroundColor: Colors.light.tint }]}>
           <Ionicons name="add" size={30} color="white" />
         </TouchableOpacity>
       </Link>
@@ -254,25 +248,22 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff', // Or use theme background
   },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
   },
   listContent: {
     padding: 16,
-    paddingBottom: 100, // Space for FAB
+    paddingBottom: 100, 
   },
   noteCard: {
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#f9f9f9', // Light gray card background
     marginBottom: 12,
     position: 'relative',
   },
@@ -281,12 +272,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   link: {
-    color: '#0a7ea4',
+    color: '#0a7ea4', 
     textDecorationLine: 'underline',
   },
   noteDate: {
     fontSize: 12,
-    color: '#888',
     marginBottom: 8,
   },
   deleteButton: {
@@ -300,7 +290,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 24,
     bottom: 24,
-    backgroundColor: '#007AFF',
     borderRadius: 28,
     width: 56,
     height: 56,
@@ -319,9 +308,7 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     height: 50,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   filterContentContainer: {
     paddingHorizontal: 15,
@@ -332,17 +319,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#f5f5f5',
     borderWidth: 1,
-    borderColor: '#eee',
-  },
-  activeFilterChip: {
-    backgroundColor: '#007AFF',
-    borderColor: '#0063cc',
   },
   filterText: {
     fontSize: 14,
-    color: '#333',
     fontWeight: '500',
   },
   activeFilterText: {
