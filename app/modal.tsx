@@ -192,13 +192,7 @@ export default function ModalScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        {/* Top Controls Row */}
         <View style={styles.topControls}>
-          <Button 
-            title="Cancel" 
-            color={colorScheme === 'dark' ? '#ff4d4d' : 'gray'}
-            onPress={() => router.dismiss()} 
-          />
           
           <TouchableOpacity 
             style={[styles.recordButtonCompact, isRecording && styles.recordingActive]}
@@ -223,7 +217,6 @@ export default function ModalScreen() {
           />
         </View>
 
-        {/* Tag Input & List Section (Now at the top) */}
         <View style={[styles.tagSection, { borderBottomColor: themeColors.border }]}>
           <View style={[
             styles.tagInputWrapper, 
@@ -258,7 +251,6 @@ export default function ModalScreen() {
           </View>
         </View>
         
-        {/* Main Note Input (Fills remaining space) */}
         <TextInput 
           style={[
             styles.input, 
@@ -285,7 +277,6 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
     padding: 20,
-    // Change to flex-start so content stacks from the top
     justifyContent: 'flex-start',
   },
   topControls: {
@@ -340,7 +331,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   input: {
-    flex: 1, // Make input fill the rest of the screen
+    flex: 1, 
     borderRadius: 8,
     padding: 15,
     fontSize: 16,
