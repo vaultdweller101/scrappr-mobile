@@ -20,7 +20,7 @@ export default function RootLayout() {
           name="modal" 
           options={{ 
             presentation: 'modal', 
-            title: 'Edit Note' // Changed from 'Modal'
+            title: 'Edit Note' 
           }} 
         />
       </Stack>

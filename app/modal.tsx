@@ -192,7 +192,7 @@ export default function ModalScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        {/* Top Controls (Replaces Title) */}
+        {/* Top Controls Row */}
         <View style={styles.topControls}>
           <Button 
             title="Cancel" 
@@ -222,33 +222,9 @@ export default function ModalScreen() {
             disabled={!note.trim() || isSaving || isRecording || isTranscribing} 
           />
         </View>
-        
-        <TextInput 
-          style={[
-            styles.input, 
-            { backgroundColor: themeColors.input, color: themeColors.text }
-          ]} 
-          placeholder="What's on your mind?" 
-          placeholderTextColor={themeColors.icon}
-          value={note}
-          onChangeText={setNote}
-          multiline
-          autoFocus
-          textAlignVertical="top"
-        />
 
+        {/* Tag Input & List Section (Now at the top) */}
         <View style={[styles.tagSection, { borderBottomColor: themeColors.border }]}>
-          <View style={styles.tagContainer}>
-            {tags.map((tag, index) => (
-              <View key={`${tag}-${index}`} style={[styles.tagChip, { backgroundColor: themeColors.filterChip }]}>
-                <ThemedText style={styles.tagText}>#{tag}</ThemedText>
-                <TouchableOpacity onPress={() => removeTag(tag)}>
-                  <Ionicons name="close-circle" size={16} color={themeColors.icon} style={{marginLeft: 4}} />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-
           <View style={[
             styles.tagInputWrapper, 
             { 
@@ -269,7 +245,33 @@ export default function ModalScreen() {
               autoCorrect={false} 
             />
           </View>
+
+          <View style={styles.tagContainer}>
+            {tags.map((tag, index) => (
+              <View key={`${tag}-${index}`} style={[styles.tagChip, { backgroundColor: themeColors.filterChip }]}>
+                <ThemedText style={styles.tagText}>#{tag}</ThemedText>
+                <TouchableOpacity onPress={() => removeTag(tag)}>
+                  <Ionicons name="close-circle" size={16} color={themeColors.icon} style={{marginLeft: 4}} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
         </View>
+        
+        {/* Main Note Input (Fills remaining space) */}
+        <TextInput 
+          style={[
+            styles.input, 
+            { backgroundColor: themeColors.input, color: themeColors.text }
+          ]} 
+          placeholder="What's on your mind?" 
+          placeholderTextColor={themeColors.icon}
+          value={note}
+          onChangeText={setNote}
+          multiline
+          autoFocus
+          textAlignVertical="top"
+        />
 
       </KeyboardAvoidingView>
     </ThemedView>
@@ -283,21 +285,14 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
     padding: 20,
+    // Change to flex-start so content stacks from the top
     justifyContent: 'flex-start',
   },
   topControls: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 10,
-  },
-  input: {
-    borderRadius: 8,
-    padding: 15,
-    fontSize: 16,
-    minHeight: 150,
-    marginBottom: 20,
+    marginBottom: 15,
   },
   recordButtonCompact: {
     backgroundColor: '#007AFF',
@@ -312,26 +307,8 @@ const styles = StyleSheet.create({
   },
   tagSection: {
     width: '100%',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    marginBottom: 10,
-  },
-  tagContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
-  },
-  tagChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-  },
-  tagText: {
-    fontSize: 14,
-    fontWeight: '500',
+    marginBottom: 15,
+    gap: 10,
   },
   tagInputWrapper: {
     flexDirection: 'row',
@@ -345,5 +322,28 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 14,
+  },
+  tagContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  tagText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  input: {
+    flex: 1, // Make input fill the rest of the screen
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+    textAlignVertical: 'top', 
   },
 });
